@@ -4,8 +4,8 @@ from models import *
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret'
 
-@app.route('/cadastro-livro/', methods=['POST'])
-def cadastro_livro(e):
+@app.route('/cadastro-livro', methods=['POST'])
+def cadastro_livro():
     try:
         form_cadastro = Livro(
             id_livro=int(request.form['id_livro']),

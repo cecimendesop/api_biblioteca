@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base, relationship
 
 engine = create_engine('sqlite:///biblioteca.sqlite3')
@@ -16,7 +16,7 @@ class Livro(Base):
     ISBN = Column(Integer, nullable=False, index=True)
     data_lancamento = Column(String(11), nullable=False, index=True)
 
-    movimentacoes = relationship('Movimentação', back_populates="livro")
+    titulolivro = relationship('Emprestimo', back_populates="livro")
 
     def __repr__(self):
         return '<Livro:  {} {} {} {} {} {} >'.format(self.id_livro, self.titulo, self.autor, self.resumo, self.ISBN,
@@ -49,7 +49,7 @@ class Usuario(Base):
     endereco = Column(String(90), nullable=False, index=True)
     telefone = Column(Integer, nullable=False, index=True)
 
-    movimentacoes = relationship('Movimentacao', back_populates="usuario")
+    movimentacoes = relationship('Emprestimo', back_populates="usuario")
 
     def __repr__(self):
         return '<usuário: {} {} {} {} {}>'.format(self.id_usuario, self.nome, self.CPF, self.endereco, self.telefone)
@@ -77,9 +77,12 @@ class Emprestimo(Base):
     id_emprestimo = Column(Integer, primary_key=True)
     data_emprestimo = Column(String(11), nullable=False, index=True)
     data_devolucao = Column(String(11), nullable=False, index=True)
-    livro_emprestado = relationship('Livro', back_populates='emprestimo')
-    usuario_do_emprestimo = relationship('Usuario', back_populates='emprestimo')
+    livro_emprestado = Column(String, ForeignKey('livro.titulo'), nullable=False)
+    usuario_do_emprestimo = Column(String, ForeignKey('usuario.nome'), nullable=False)
     status = Column(String, nullable=False)
+
+    titulo = relationship('Livro', back_populates="Emprestimo")
+    usuario_emprestimo = relationship('Usuario', back_populates="Emprestimo")
 
     def __repr__(self):
             return '<Empréstimo: {} {} {} {}>'.format(self.id_emprestimo, self.livro_emprestado, self.usuario_do_emprestimo,
