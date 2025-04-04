@@ -1,8 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, declarative_base
 
-
-
 Base = declarative_base()
 
 class Livro(Base):
@@ -11,6 +9,8 @@ class Livro(Base):
     titulo = Column(String, index=True)
     autor = Column(String)
     isbn = Column(String, index=True)
+    edicao = Column(String)
+    formato = Column(String)
     resumo = Column(String)
 
 class Usuario(Base):

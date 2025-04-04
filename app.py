@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base, Livro, Usuario, Emprestimo
 
-DATABASE_URL = "sqlite:///./biblioteca.db"
+DATABASE_URL = "sqlite:///./biblioteca.sqlite3"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
@@ -20,7 +20,7 @@ def get_db():
 @app.route("/livros/", methods=["POST"])
 def criar_livro():
     data = request.form
-    if not all(k in data for k in ("titulo", "autor", "isbn", "resumo")):
+    if not all(k in data for k in ("titulo", "autor", "isbn", "formato", "resumo")):
         return jsonify({"error": "Todos os campos são obrigatórios."}), 400
     db = SessionLocal()
     novo_livro = Livro(**data)
