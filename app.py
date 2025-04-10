@@ -170,7 +170,6 @@ def cadastrar_emprestimo():
             Bad Request***:
                 ```json
            """
-
     try:
         if request.method == 'POST':
             if (not request.form['form_data_emprestimo'] or not request.form['form_data_devolucao']
@@ -207,12 +206,10 @@ def cadastrar_emprestimo():
             "erro": "Empréstimo já cadastrado!"
         })
 
-
 @app.route('/editar_livro/<int:id>', methods=['POST'])
 def editar_livro(id):
     """
            Editar livro.
-
            ## Endpoint:
             /editar_livro/<int:id>
 
@@ -234,7 +231,6 @@ def editar_livro(id):
             Bad Request***:
                 ```json
            """
-
     try:
         livro_atualizado = db_session.execute(select(Livro).where(Livro.id_livro == id)).scalar()
 
@@ -262,7 +258,7 @@ def editar_livro(id):
                 return jsonify({
                     "titulo": livro_atualizado.titulo,
                     "autor": livro_atualizado.autor,
-                    "isbn": livro_atualizado.isbn,
+                    "ISBN": livro_atualizado.isbn,
                     "resumo": livro_atualizado.resumo
                 })
 
@@ -290,6 +286,7 @@ def editar_usuario(id):
                 "nome":
                 "cpf",
                 "endereco":,
+                "telefone":,
             }
 
            ## Erros possíveis (JSON):
@@ -326,6 +323,7 @@ def editar_usuario(id):
                 usuario_atualizado.nome = request.form['form_nome']
                 usuario_atualizado.cpf = request.form['form_cpf'].strip()
                 usuario_atualizado.endereco = request.form['form_endereco']
+                usuario_atualizado.telefone = request.form['form_telefone']
 
                 usuario_atualizado.save()
                 # db_session.commit()
@@ -334,13 +332,13 @@ def editar_usuario(id):
                     "nome": usuario_atualizado.nome,
                     "cpf": usuario_atualizado.cpf,
                     "endereco": usuario_atualizado.endereco,
+                    "telefone": usuario_atualizado.telefone,
                 })
 
     except sqlalchemy.exc.IntegrityError:
         return jsonify({
             "erro": "O CPF deste usuário já está cadastrado!"
         })
-
 
 @app.route('/get_usuario/<int:id>', methods=['GET'])
 def get_usuario(id):
@@ -357,10 +355,11 @@ def get_usuario(id):
            ```json
 
            {
-                "id":
+                "id_usuario":
                 "nome",
-                "cpf":,
+                "CPF":,
                 "endereco",
+                "telefone":,
             }
 
            ## Erros possíveis (JSON):
@@ -381,19 +380,18 @@ def get_usuario(id):
                 "id": usuario.id,
                 "nome": usuario.nome,
                 "cpf": usuario.cpf,
-                "endereco": usuario.endereco
+                "endereco": usuario.endereco,
+                "telefone": usuario.telefone
             })
     except ValueError:
         return jsonify({
             "error": "Lista indisponível"
         })
 
-
 @app.route('/usuarios', methods=['GET'])
 def usuarios():
     """
            Lista de usuários.
-
            ## Endpoint:
             /usuarios
 
@@ -405,7 +403,6 @@ def usuarios():
             }
 
     """
-
     try:
         sql_usuarios = select(Usuario)
         resultado_usuarios = db_session.execute(sql_usuarios).scalars()
@@ -420,7 +417,6 @@ def usuarios():
             "error": "Lista indisponível"
         })
 
-
 @app.route('/livros', methods=['GET'])
 def livros():
     """
@@ -434,7 +430,6 @@ def livros():
         {
             "livros": lista_livros"
         }
-
         ## Erros possíveis (JSON):
         "Lista indisponível"
         Bad Request***:
@@ -480,8 +475,6 @@ def get_livro(id):
             Bad Request***:
                 ```json
            """
-
-
     try:
         livro = db_session.execute(select(Livro).where(Livro.id_livro == id)).scalar()
 
@@ -495,7 +488,7 @@ def get_livro(id):
                 "id": livro.id,
                 "titulo": livro.titulo,
                 "autor": livro.autor,
-                "isbn": livro.isbn,
+                "ISBN": livro.isbn,
                 "resumo": livro.resumo
             })
 
@@ -506,7 +499,7 @@ def get_livro(id):
 @app.route('/emprestimos_usuario/<id>', methods=['GET'])
 def emprestimos_usuario(id):
     """
-           API para listar emprestimos por usuários.
+           listar emprestimo por usuário.
 
            ## Endpoint:
             /emprestimos_usuario/<int:id>
@@ -516,7 +509,6 @@ def emprestimos_usuario(id):
 
            ## Respostas (JSON):
            ```json
-
             {
                 "usuario":
                 "emprestimo",
@@ -528,7 +520,6 @@ def emprestimos_usuario(id):
             Bad Request***:
                 ```json
            """
-
     try:
         id_usuario = int(id)
         emprestimos_user = db_session.execute(select(Emprestimo).where(Emprestimo.usuario_do_emprestimo== id_usuario)).scalars().all()
@@ -555,26 +546,22 @@ def emprestimos_usuario(id):
 @app.route('/status_livro', methods=['GET'])
 def status_livro():
     """
-           API para mostrar status de livro.
+          status de livro.
 
            ## Endpoint:
             /status_livro
-
            ## Respostas (JSON):
            ```json
-
            {
                 "livros emprestados":
                 "livros disponiveis",
             }
 
             ## Erros possíveis (JSON):
-            "Não foi possível mostrar o status dos livros ***400
+            "Dados de status indisponíveis"
             Bad Request***:
                 ```json
             """
-
-
     try:
         livro_emprestado = db_session.execute(
             select(Livro).where(Livro.id_livro == Emprestimo.id_emprestimo).distinct(Livro.ISBN)).scalars()
@@ -606,7 +593,7 @@ def status_livro():
 
     except ValueError:
         return jsonify({
-            "error": "não foi possível mostrar o status do livro"
+            "error": "dados de status indisponíveis"
         })
 
 
