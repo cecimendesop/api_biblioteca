@@ -14,9 +14,10 @@ class Livro(Base):
     autor = Column(String(30), nullable=False, index=True)
     ISBN = Column(Integer, nullable=False, index=True)
     resumo = Column(String(200), nullable=False, index=True)
+    status = Column(String(20), nullable=False, index=True)
 
     def __repr__(self):
-        return '<Livro: {} {} {} {} {}'.format(self.id_livro, self.titulo, self.autor, self.ISBN, self.resumo)
+        return '<Livro: {} {} {} {} {}'.format(self.id_livro, self.titulo, self.autor, self.ISBN, self.resumo, self.status)
 
     def save(self):
         db_session.add(self)
@@ -31,7 +32,8 @@ class Livro(Base):
             "Título": self.titulo,
             "Autor": self.autor,
             "ISBN": self.ISBN,
-            "Resumo": self.resumo
+            "Resumo": self.resumo,
+            "Status": self.status
         }
         return dados_livro
 
