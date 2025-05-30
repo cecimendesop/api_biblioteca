@@ -14,10 +14,9 @@ class Livro(Base):
     autor = Column(String(30), nullable=False, index=True)
     ISBN = Column(Integer, nullable=False, index=True)
     resumo = Column(String(200), nullable=False, index=True)
-    status = Column(String(20), nullable=False, index=True)
 
     def __repr__(self):
-        return '<Livro: {} {} {} {} {}'.format(self.id_livro, self.titulo, self.autor, self.ISBN, self.resumo, self.status)
+        return '<Livro: {} {} {} {} {}'.format(self.id_livro, self.titulo, self.autor, self.ISBN, self.resumo)
 
     def save(self):
         db_session.add(self)
@@ -29,11 +28,10 @@ class Livro(Base):
 
     def serialize_livro(self):
         dados_livro = {
-            "Título": self.titulo,
-            "Autor": self.autor,
-            "ISBN": self.ISBN,
-            "Resumo": self.resumo,
-            "Status": self.status
+            "titulo": self.titulo,
+            "autor": self.autor,
+            "isbn": self.ISBN,
+            "resumo": self.resumo
         }
         return dados_livro
 
@@ -59,9 +57,9 @@ class Usuario(Base):
 
     def serialize_usuario(self):
         dados_usuario = {
-            "Nome": self.nome,
-            "CPF": self.CPF,
-            "Endereço": self.endereco
+            "nome": self.nome,
+            "cpf": self.CPF,
+            "endereco": self.endereco
         }
         return dados_usuario
 
@@ -71,8 +69,7 @@ class Emprestimo(Base):
     id_emprestimo = Column(Integer, primary_key=True)
     data_emprestimo = Column(String(8), nullable=False, index=True)
     data_devolucao = Column(String(8), nullable=False, index=True)
-    livro_emprestado = Column(String(50), nullable=False, index=True)
-    usuario_emprestado = Column(String(50), nullable=False, index=True)
+
 
     id_usuario = Column(Integer, ForeignKey('USUARIOS.id_usuario'))
     usuario = relationship('Usuario')
@@ -81,7 +78,7 @@ class Emprestimo(Base):
 
 
     def __repr__(self):
-        return '<Venda: {} {} {} {} {} '.format(self.id_emprestimo, self.data_emprestimo, self.data_devolucao, self.livro_emprestado, self.usuario_emprestado)
+        return '<Venda: {} {} {}  '.format(self.id_emprestimo, self.data_emprestimo, self.data_devolucao)
 
     def save(self):
         db_session.add(self)
@@ -93,12 +90,10 @@ class Emprestimo(Base):
 
     def serialize_emprestimo(self):
         dados_emprestimo = {
-            "Data de empréstimo": self.data_emprestimo,
-            "Data de devolução": self.data_devolucao,
-            "Livro emprestado": self.livro_emprestado,
-            "Usúario emprestado": self.usuario_emprestado,
-            'Usúario': self.id_usuario,
-            'Livro': self.id_livro,
+            "data de emprestimo": self.data_emprestimo,
+            "data de devolucao": self.data_devolucao,
+            'usuario': self.id_usuario,
+            'livro': self.id_livro,
         }
         return dados_emprestimo
 
