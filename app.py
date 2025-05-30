@@ -29,10 +29,11 @@ def livros():
     lista_livros = []
     for n in resultado_livros:
         lista_livros.append(n.serialize_livro())
-    return jsonify({'lista_livros': lista_livros})
+    return jsonify({'livros': lista_livros})
 
 @app.route('/usuarios', methods=['GET'])
 def usuarios():
+    #protegido
     """
                Lista de usuários.
                ## Endpoint:
@@ -51,7 +52,7 @@ def usuarios():
     lista_usuarios = []
     for n in resultado_usuarios:
         lista_usuarios.append(n.serialize_usuario())
-    return jsonify({'lista_usuarios': lista_usuarios})
+    return jsonify({'usuarios': lista_usuarios})
 
 @app.route('/emprestimos', methods=['GET'])
 def emprestimos():
@@ -60,54 +61,89 @@ def emprestimos():
     lista_emprestimos = []
     for n in resultado_emprestimos:
         lista_emprestimos.append(n.serialize_emprestimo())
-    return jsonify({'lista_emprestimos' : lista_emprestimos})
+    return jsonify({'emprestimos' : lista_emprestimos})
 
 @app.route('/novo_livro', methods=['POST'])
 def cadastrar_livros():
+    #proteger - apenas adm
+    """
+           Cadastro de livro.
+
+           ## Endpoint:
+            /cadastrar_livro
+
+           ## Respostas (JSON):
+           ```json
+
+           {
+                "titulo":
+                "autor",
+                "ISBN":,
+                "resumo",
+            }
+
+           ## Erros possíveis (JSON):
+            "livro já cadastrado"
+            Bad Request***:
+                ```json
+           """
     dados = request.get_json()
     print(dados)
 
     try:
-        campos_obrigatorios = ['titulo', 'autor', 'isbn', 'resumo']
-        for campo in campos_obrigatorios:
-            if campo not in dados or not str(dados[campo]).strip():
-                return jsonify({'erro': f"Campo obrigatório ausente ou vazio: {campo}"}), 400
+        if dados['titulo'] == "" or dados['autor'] == "" or dados['isbn'] == "" or dados['resumo'] == "":
+            return jsonify({'erro': "Campos não podem ser vazios"})
+        else:
+            form_cadastro_livro = Livro(
+                titulo=str (dados['titulo']),
+                autor=str(dados['autor']),
+                ISBN=int(dados['isbn']),
+                resumo=str(dados['resumo'])
+            )
 
-        form_cadastro_livro = Livro(
-            titulo=str(dados['titulo']),
-            autor=str(dados['autor']),
-            ISBN=int(dados['isbn']),
-            resumo=str(dados['resumo']),
-            status="disponível"  # status inicial
-        )
+            form_cadastro_livro.save()
 
-        form_cadastro_livro.save()
-
-        return jsonify({
-            'Mensagem': 'Livro adicionado com sucesso',
-            'titulo': form_cadastro_livro.titulo,
-            'autor': form_cadastro_livro.autor,
-            'isbn': form_cadastro_livro.ISBN,
-            'resumo': form_cadastro_livro.resumo,
-            'status': form_cadastro_livro.status
-        })
-
+            return jsonify({
+                'Mensagem': 'Livro adicionado com sucesso',
+                'titulo': form_cadastro_livro.titulo,
+                'autor': form_cadastro_livro.autor,
+                'isbn': form_cadastro_livro.ISBN,
+                'resumo': form_cadastro_livro.resumo
+            }),201
     except ValueError:
-        return jsonify({'erro': 'Cadastro de livro inválido!'}), 400
-
-
+        return jsonify({
+            'erro':'cadastro de livro inválida!'
+        })
 
 @app.route('/novo_usuario', methods=['POST'])
 def cadastrar_usuarios():
+
+    """
+              Cadastro de usuário
+
+              ## Endpoint:
+               /cadastrar_usuario
+
+              ## Respostas (JSON):
+              ```json
+
+              {
+                   "id":
+                   "nome",
+                   "cpf":,
+                   "endereco",
+               }
+
+              ## Erros possíveis (JSON):
+               "usuário já cadastrado"
+               Bad Request***:
+                   ```json
+              """
     dados = request.get_json()
     print(dados)
     try:
-        # Verificação correta dos campos
-        campos_obrigatorios = ['nome', 'cpf', 'endereco']
-        for campo in campos_obrigatorios:
-            if campo not in dados or not str(dados[campo]).strip():
-                return jsonify({'erro': f"Campo obrigatório ausente ou vazio: {campo}"}), 400
-
+        if dados['nome'] == "" or dados['cpf'] == "" or dados['endereco'] == "":
+            return jsonify({'erro': "Campos não podem ser vazios"})
         form_cadastro_usuario = Usuario(
             nome=str(dados['nome']),
             CPF=str(dados['cpf']),
@@ -117,62 +153,70 @@ def cadastrar_usuarios():
         form_cadastro_usuario.save()
 
         return jsonify({
-
-            'Nome': form_cadastro_usuario.nome,
-            'CPF': form_cadastro_usuario.CPF,
-            'Endereco': form_cadastro_usuario.endereco,
             'Mensagem': 'Usuário criado com sucesso',
-        })
+            'nome': form_cadastro_usuario.nome,
+            'cpf': form_cadastro_usuario.CPF,
+            'endereco': form_cadastro_usuario.endereco,
+        }),201
 
     except ValueError:
-        return jsonify({'erro': 'Cadastro de usuário inválido!'}), 400
-
+        return jsonify({
+            'erro':'cadastro de usuário inválida!'
+        })
 
 @app.route('/realizar_emprestimo', methods=['POST'])
 def cadastrar_emprestimo():
+
+    """
+               Realiza emprestimo.
+
+               ## Endpoint:
+                /cadastrar_emprestimo
+
+               ## Respostas (JSON):
+               ```json
+
+               {
+                    "data_devolucao":
+                    "data_emprestimo",
+                    "livro":,
+                    "usuario":,
+                }
+
+               ## Erros possíveis (JSON):
+                "Emprestimo já cadastrado"
+                Bad Request***:
+                    ```json
+               """
     dados = request.get_json()
+    print(dados)
     try:
-        if not all(k in dados and dados[k] for k in ("data_devolucao", "data_emprestimo", "id_usuario", "id_livro")):
-            return jsonify({'erro': "Campos obrigatórios não podem ser vazios"})
-
-        usuario = db_session.query(Usuario).filter_by(id_usuario=int(dados['id_usuario'])).first()
-        livro = db_session.query(Livro).filter_by(id_livro=int(dados['id_livro'])).first()
-
-        if not usuario or not livro:
-            return jsonify({'erro': "Usuário ou livro não encontrado"})
-
-        # Atualiza status do livro
-        livro.status = "emprestado"
-        livro.save()
+        if dados['data_devolucao'] == "" or dados['data_emprestimo'] == "":
+            return jsonify({'erro': "Campos não pode ser vazio"})
 
         form_cadastro_emprestimo = Emprestimo(
-            id_usuario=int(dados['id_usuario']),
-            id_livro=int(dados['id_livro']),
-            data_emprestimo=dados['data_emprestimo'],
-            data_devolucao=dados['data_devolucao'],
-            livro_emprestado=livro.titulo,
-            usuario_emprestado=usuario.nome
+            id_usuario = int(dados['id_usuario']),
+            id_livro = int(dados['id_livro']),
+            data_emprestimo = (dados['data_emprestimo']),
+            data_devolucao = (dados['data_devolucao']),
         )
-
         form_cadastro_emprestimo.save()
-
         return jsonify({
             'Mensagem': 'Empréstimo realizado com sucesso',
             'id_usuario': form_cadastro_emprestimo.id_usuario,
             'id_livro': form_cadastro_emprestimo.id_livro,
             'data_emprestimo': form_cadastro_emprestimo.data_emprestimo,
             'data_devolucao': form_cadastro_emprestimo.data_devolucao,
-            'status_livro': livro.status
-        })
+        }),201
 
     except ValueError:
-        return jsonify({'erro': 'Erro ao processar os dados do empréstimo'})
-
-
-
+        return jsonify({
+            'erro':'cadastro de usuário inválida!'
+        })
 
 @app.route('/consulta_historico_emprestimo', methods=['GET'])
 def historico_emprestimo():
+    #protegido
     sql_historico_emprestimo = select(Emprestimo)
     resultado_historico_emprestimo = db_session.execute(sql_historico_emprestimo).scalars()
     lista_historico_emprestimo = []
@@ -181,7 +225,7 @@ def historico_emprestimo():
     return jsonify({'historico_de_emprestimo': lista_historico_emprestimo})
 
 
-@app.route('/atualizar_usuario/<int:id>', methods=['PUT'])
+@app.route('/atualizar_usuario/<id>', methods=['PUT'])
 def editar_usuario(id):
     """
                API para editar dados do usuario.
@@ -199,7 +243,7 @@ def editar_usuario(id):
                     "nome":
                     "cpf",
                     "endereco":,
-
+                    "telefone":,
                 }
 
                ## Erros possíveis (JSON):
@@ -210,125 +254,179 @@ def editar_usuario(id):
     dados = request.get_json()
     print(dados)
     try:
-        if not dados.get('nome') or not dados.get('cpf') or not dados.get('endereco'):
-            return jsonify({'erro': "Campos obrigatórios não podem ser vazios"})
+        if not "nome" or not "cpf" in dados:
+            return jsonify({'erro':"Campos obrigatorios"})
+        if dados['nome'] or ['cpf'] or ['endereco'] == "":
+            return jsonify({'erro': "Campos não pode ser vazio"})
 
-        usuario_editado = db_session.execute(
-            select(Usuario).where(Usuario.id_usuario == int(id))
-        ).scalar()
+        usuario_editado = db_session.execute(select(Usuario).where(Usuario.id_usuario == id)).scalar()
 
         if not usuario_editado:
-            return jsonify({"erro": "Não foi possível encontrar o usuário!"})
+            return jsonify({
+                "erro": "Não foi possível encontrar o usuário!"
+            })
 
-        # Verifica se o CPF foi alterado
-        cpf = dados['cpf'].strip()
-        if usuario_editado.CPF != cpf:
-            cpf_existe = db_session.execute(
-                select(Usuario).where(Usuario.CPF == cpf)
-            ).scalar()
+        if request.method == 'PUT':
+            if (not request.form['form_nome'] and not request.form['form_CPF']
+                    and not request.form['form_endereco']):
+                return jsonify({
+                    "erro": "Os campos não devem ficar em branco!"
+                })
 
-            if cpf_existe:
-                return jsonify({"erro": "Este CPF já existe!"})
+            else:
+                cpf = request.form['form_CPF'].strip()
+                if usuario_editado.cpf != cpf:
+                    cpf_existe = db_session.execute(select(Usuario).where(Usuario.CPF == cpf)).scalar()
 
-        usuario_editado.nome = dados['nome']
-        usuario_editado.CPF = cpf
-        usuario_editado.endereco = dados['endereco']
-        usuario_editado.save()
+                    if cpf_existe:
+                        return jsonify({
+                            "erro": "Este CPF já existe!"
+                        })
 
-        return jsonify({
-            "nome": usuario_editado.nome,
-            "CPF": usuario_editado.CPF,
-            "endereco": usuario_editado.endereco,
-        })
+                usuario_editado.nome = (dados['form_nome'])
+                usuario_editado.CPF = (dados['form_cpf']).strip()
+                usuario_editado.endereco = (dados['form_endereco'])
+
+                usuario_editado.save()
+
+                return jsonify({
+                    "nome": usuario_editado.nome,
+                    "CPF": usuario_editado.CPF,
+                    "endereco": usuario_editado.endereco,
+                })
 
     except sqlalchemy.exc.IntegrityError:
-        return jsonify({"erro": "Esse CPF já foi cadastrado!"})
+        return jsonify({
+            "erro": "Esse CPF já foi cadastrado!"
+        })
 
-
-@app.route('/atualizar_livro/<int:id>', methods=['PUT'])
+@app.route('/atualizar_livro/<id>', methods=['PUT'])
 def editar_livro(id):
+    #protegido
+    """
+               Editar livro.
+               ## Endpoint:
+                /editar_livro/<int:id>
+
+                ## Parâmetro:
+                "id" **Id do livro**
+
+               ## Respostas (JSON):
+               ```json
+
+               {
+                    "titulo":
+                    "autor",
+                    "ISBN":,
+                    "resumo",
+                }
+
+               ## Erros possíveis (JSON):
+                "O titulo já está cadastrado"
+                Bad Request***:
+                    ```json
+               """
     dados = request.get_json()
     print(dados)
-
     try:
-        # Verifica se as chaves existem
-        if not all(key in dados for key in ("titulo", "autor", "ISBN", "resumo")):
-            return jsonify({'erro': "Campos obrigatórios"})
-
-        # Verifica se algum campo está vazio (ou só com espaços)
-        if any(dados.get(key, "").strip() == "" for key in ("titulo", "autor", "ISBN", "resumo")):
-            return jsonify({'erro': "Campos não podem ser vazios"})
+        if not "titulo" or not "autor" or not "ISBN" in dados:
+            return jsonify({'erro':"Campos obrigatorios"})
+        if dados['titulo'] or ['autor'] or ['ISBN'] or ['resumo '] == "":
+            return jsonify({'erro': "Campos não pode ser vazio"})
 
         livro_editado = db_session.execute(select(Livro).where(Livro.id_livro == id)).scalar()
 
         if not livro_editado:
-            return jsonify({"erro": "O livro não foi encontrado!"})
+            return jsonify({
+                "erro": "O livro não foi encontrado!"
+            })
 
-        # Atualiza o livro com os dados recebidos
-        livro_editado.titulo = dados['titulo']
-        livro_editado.autor = dados['autor']
-        livro_editado.ISBN = dados['ISBN']
-        livro_editado.resumo = dados['resumo']
+        if request.method == 'PUT':
+            if (not request.form['form_titulo'] and not request.form['form_autor']
+                    and not request.form['form_ISBN'] and not request.form['form_resumo']):
+                return jsonify({
+                    "erro": "Os campos não devem ficar em branco!"
+                })
 
-        livro_editado.save()
+            else:
+                livro_editado.titulo = (dados['form_titulo'])
+                livro_editado.autor = (dados['form_autor'])
+                livro_editado.ISBN = (dados['form_ISBN'])
+                livro_editado.resumo = (dados['form_resumo'])
 
-        return jsonify({
-            "titulo": livro_editado.titulo,
-            "autor": livro_editado.autor,
-            "ISBN": livro_editado.ISBN,
-            "resumo": livro_editado.resumo
-        })
+                livro_editado.save()
+
+                return jsonify({
+                    "titulo": livro_editado.titulo,
+                    "autor": livro_editado.autor,
+                    "ISBN": livro_editado.ISBN,
+                    "resumo": livro_editado.resumo
+                })
 
     except sqlalchemy.exc.IntegrityError:
-        return jsonify({"erro": "O título já foi cadastrado!"})
-
+        return jsonify({
+            "erro": "O titulo já foi cadastrado!"
+        })
 
 @app.route('/livro_status', methods=['GET'])
 def livro_status():
-    try:
-        livros = db_session.execute(select(Livro)).scalars().all()
+    """
+              status de livro.
 
-        lista_emprestados = [livro.serialize_livro() for livro in livros if livro.status == "emprestado"]
-        lista_disponiveis = [livro.serialize_livro() for livro in livros if livro.status == "disponível"]
+               ## Endpoint:
+                /status_livro
+               ## Respostas (JSON):
+               ```json
+               {
+                    "livros emprestados":
+                    "livros disponiveis",
+                }
+
+                ## Erros possíveis (JSON):
+                "Dados de status indisponíveis"
+                Bad Request***:
+                    ```json
+                """
+    try:
+        livro_emprestado = db_session.execute(
+            select(Livro).where(Livro.id_livro == Emprestimo.id_livro).distinct(Livro.ISBN)
+        ).scalars()
+
+        id_livro_emprestado = db_session.execute(
+            select(Emprestimo.id_livro).distinct(Emprestimo.id_livro)
+        ).scalars().all()
+
+        print("livro Emprestados",livro_emprestado)
+        print("ids_livro_emprestado",id_livro_emprestado)
+        livrostatus = db_session.execute(select(Livro)).scalars()
+
+        print("Todos os livros", livrostatus)
+
+        lista_emprestados = []
+        lista_disponiveis = []
+        for livro in livro_emprestado:
+            lista_emprestados.append(livro.serialize_livro())
+
+        print("Resultados da lista:", lista_emprestados)
+
+        for livro in livrostatus:
+            if livro.id_livro not in id_livro_emprestado:
+                lista_disponiveis.append(livro.serialize_livro())
+
+        print("Resultados disponiveis", lista_disponiveis)
+
 
         return jsonify({
-            "livros_emprestados": lista_emprestados,
-            "livros_disponiveis": lista_disponiveis
+            "Livros emprestados": lista_emprestados,
+            "Livros disponiveis": lista_disponiveis
+
         })
 
-    except Exception as e:
-        print("Erro ao consultar status dos livros:", e)
-        return jsonify({"erro": "Dados indisponíveis"}), 500
-
-
-@app.route('/editar_status_livro/<int:id>', methods=['PUT'])
-def editar_status_livro(id):
-    dados = request.get_json()
-
-    if not dados or 'status' not in dados:
-        return jsonify({"erro": "Campo 'status' obrigatório"}), 400
-
-    status = dados['status'].strip().lower()
-    if status not in ("disponível", "emprestado"):
-        return jsonify({"erro": "Status inválido. Use 'disponível' ou 'emprestado'."}), 400
-
-    livro = db_session.execute(select(Livro).where(Livro.id_livro == id)).scalar()
-
-    if not livro:
-        return jsonify({"erro": "Livro não encontrado"}), 404
-
-    livro.status = status
-    livro.save()
-
-    return jsonify({
-        "id_livro": livro.id_livro,
-        "nome": livro.titulo,
-        "status": livro.status
-    }), 200
-
-
-
+    except ValueError:
+        return jsonify({
+            "error": "Dados indisponíveis"
+        })
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)
