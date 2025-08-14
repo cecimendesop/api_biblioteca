@@ -2,10 +2,29 @@ from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship, declarative_base
 engine = create_engine('sqlite:///base_biblioteca.sqlite3')
 
-db_session = scoped_session(sessionmaker(bind=engine))
+from dotenv import load_dotenv
+import os  # criar variavel de ambiente '.env'
+import configparser  # criar arquivo de configuração 'config.ini'
+
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# configurar banco vercel
+# ler variavel de ambiente
+load_dotenv()
+# Carregue as configurações do banco de dados
+url_ = os.environ.get("base_biblioteca.sqlite3")
+print(f"modo1:{url_}")
+
+# Carregue o arquivo de configuração
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+
+local_session = sessionmaker(bind=engine)
+#db_session = scoped_session(sessionmaker(bind=engine))
 
 Base = declarative_base()
-Base.query = db_session.query_property()
+#Base.query = db_session.query_property()
 
 class Livro(Base):
     __tablename__ = 'LIVROS'
@@ -18,16 +37,17 @@ class Livro(Base):
     def __repr__(self):
         return '<Livro: {} {} {} {} {}'.format(self.id_livro, self.titulo, self.autor, self.ISBN, self.resumo)
 
-    def save(self):
+    def save(self,db_session):
         db_session.add(self)
         db_session.commit()
 
-    def delete(self):
+    def delete(self, db_session):
         db_session.delete(self)
         db_session.commit()
 
     def serialize_livro(self):
         dados_livro = {
+            "id_livro": self.id_livro,
             "titulo": self.titulo,
             "autor": self.autor,
             "isbn": self.ISBN,
@@ -43,20 +63,29 @@ class Usuario(Base):
     nome = Column(String(40), nullable=False, index=True)
     CPF = Column(String(11), nullable=False, index=True, unique=True)
     endereco = Column(String(50), nullable=False, index=True)
+    senha_hash = Column(String, nullable=False)
+    papel = Column(String, nullable=False)
+
+    def set_senha_hash(self, senha):
+        self.senha_hash = generate_password_hash(senha)
+
+    def check_password(self, senha):
+        return check_password_hash(self.senha_hash, senha)
 
     def __repr__(self):
         return '<Produto: {} {} {} {}'.format(self.id_usuario, self.nome, self.CPF, self.endereco)
 
-    def save(self):
+    def save(self, db_session):
         db_session.add(self)
         db_session.commit()
 
-    def delete(self):
+    def delete(self, db_session):
         db_session.delete(self)
         db_session.commit()
 
     def serialize_usuario(self):
         dados_usuario = {
+            "id": self.id_usuario,
             "nome": self.nome,
             "cpf": self.CPF,
             "endereco": self.endereco
@@ -80,11 +109,11 @@ class Emprestimo(Base):
     def __repr__(self):
         return '<Venda: {} {} {}  '.format(self.id_emprestimo, self.data_emprestimo, self.data_devolucao)
 
-    def save(self):
+    def save(self, db_session):
         db_session.add(self)
         db_session.commit()
 
-    def delete(self):
+    def delete(self, db_session):
         db_session.delete(self)
         db_session.commit()
 
