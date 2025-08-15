@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import scoped_session, sessionmaker, relationship, declarative_base
+from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 engine = create_engine('sqlite:///base_biblioteca.sqlite3')
 
 from dotenv import load_dotenv
