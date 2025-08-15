@@ -1,11 +1,32 @@
 import sqlalchemy
 from flask import Flask, jsonify, request
+from flask_jwt_extended import create_access_token, get_jwt_identity, JWTManager, jwt_required
+from functools import wraps
 from sqlalchemy import select
-from models import Livro, Usuario, Emprestimo, db_session
+from models import Livro, Usuario, Emprestimo, local_session
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret'
+jwt = JWTManager(app)
 
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        current_user = get_jwt_identity()
+        db_session = local_session()
+        try:  # user atual
+            print(current_user)
+            sql = select(Usuario).where(Usuario.CPF == current_user)
+            user = db_session.execute(sql).scalar()
+            print(user)
+            if user and user.papel == "admin":
+                return fn(*args, **kwargs)
+            else:
+                return jsonify({"msg": "Acesso negado: Requer privilégios de administrador"}), 403
+        finally:
+            db_session.close()
+
+    return wrapper
 
 @app.route('/livros', methods=['GET'])
 def livros():
@@ -25,6 +46,7 @@ def livros():
             Bad Request***:
                 ```json
                """
+    db_session = local_session()
     sql_livros = select(Livro)
     resultado_livros = db_session.execute(sql_livros).scalars()
     lista_livros = []
@@ -49,6 +71,7 @@ def usuarios():
                 }
 
         """
+    db_session = local_session()
     sql_usuarios = select(Usuario)
     resultado_usuarios = db_session.execute(sql_usuarios).scalars()
     lista_usuarios = []
@@ -59,6 +82,7 @@ def usuarios():
 
 @app.route('/emprestimos', methods=['GET'])
 def emprestimos():
+    db_session = local_session()
     sql_emprestimos = select(Emprestimo)
     resultado_emprestimos = db_session.execute(sql_emprestimos).scalars()
     lista_emprestimos = []
@@ -66,8 +90,9 @@ def emprestimos():
         lista_emprestimos.append(n.serialize_emprestimo())
     return jsonify({'emprestimos': lista_emprestimos})
 
-
 @app.route('/novo_livro', methods=['POST'])
+@jwt_required()
+@admin_required
 def cadastrar_livros():
     # proteger - apenas adm
     """
@@ -91,6 +116,7 @@ def cadastrar_livros():
             Bad Request***:
                 ```json
            """
+    db_session = local_session()
     dados = request.get_json()
     print(dados)
 
@@ -105,7 +131,7 @@ def cadastrar_livros():
                 resumo=str(dados['resumo'])
             )
 
-            form_cadastro_livro.save()
+            form_cadastro_livro.save(db_session)
 
             return jsonify({
                 'Mensagem': 'Livro adicionado com sucesso',
@@ -119,8 +145,29 @@ def cadastrar_livros():
             'erro': 'cadastro de livro inválida!'
         })
 
+@app.route('/login', methods=['POST'])
+def login():
+    dados = request.get_json()
+    cpf = dados['cpf']
+    senha = dados['senha']
+
+    db_session = local_session()
+
+    try:
+        sql = select(Usuario).where(Usuario.CPF == cpf)
+        user = db_session.execute(sql).scalar()
+        print(user)
+
+        if user and user.check_password(senha):
+            access_token = create_access_token(identity=user.CPF)
+            return jsonify(access_token=access_token)
+        return jsonify({"msg": "Credenciais inválidas"}), 401
+    finally:
+        db_session.close()
 
 @app.route('/novo_usuario', methods=['POST'])
+@jwt_required()
+@admin_required
 def cadastrar_usuarios():
     """
               Cadastro de usuário
@@ -143,6 +190,7 @@ def cadastrar_usuarios():
                Bad Request***:
                    ```json
               """
+    db_session = local_session()
     dados = request.get_json()
     print(dados)
     try:
@@ -152,15 +200,18 @@ def cadastrar_usuarios():
             nome=str(dados['nome']),
             CPF=str(dados['cpf']),
             endereco=str(dados['endereco']),
+            papel=str(dados.get('papel', 'usuario'))
         )
+        form_cadastro_usuario.set_senha_hash(dados['senha_hash'])
 
-        form_cadastro_usuario.save()
+        form_cadastro_usuario.save(db_session)
 
         return jsonify({
             'Mensagem': 'Usuário criado com sucesso',
             'nome': form_cadastro_usuario.nome,
             'cpf': form_cadastro_usuario.CPF,
             'endereco': form_cadastro_usuario.endereco,
+            'papel': form_cadastro_usuario.papel
         }), 201
 
     except ValueError:
@@ -170,6 +221,8 @@ def cadastrar_usuarios():
 
 
 @app.route('/realizar_emprestimo', methods=['POST'])
+@jwt_required()
+@admin_required
 def cadastrar_emprestimo():
     """
                Realiza emprestimo.
@@ -192,6 +245,7 @@ def cadastrar_emprestimo():
                 Bad Request***:
                     ```json
                """
+    db_session = local_session()
     dados = request.get_json()
     print(dados)
     try:
@@ -204,7 +258,7 @@ def cadastrar_emprestimo():
             data_emprestimo=(dados['data_emprestimo']),
             data_devolucao=(dados['data_devolucao']),
         )
-        form_cadastro_emprestimo.save()
+        form_cadastro_emprestimo.save(db_session)
         return jsonify({
             'Mensagem': 'Empréstimo realizado com sucesso',
             'id_usuario': form_cadastro_emprestimo.id_usuario,
@@ -219,18 +273,9 @@ def cadastrar_emprestimo():
         })
 
 
-@app.route('/consulta_historico_emprestimo', methods=['GET'])
-def historico_emprestimo():
-    # protegido
-    sql_historico_emprestimo = select(Emprestimo)
-    resultado_historico_emprestimo = db_session.execute(sql_historico_emprestimo).scalars()
-    lista_historico_emprestimo = []
-    for n in resultado_historico_emprestimo:
-        lista_historico_emprestimo.append(n.serialize_emprestimo())
-    return jsonify({'historico_de_emprestimo': lista_historico_emprestimo})
-
-
 @app.route('/atualizar_usuario/<id>', methods=['PUT'])
+@jwt_required()
+@admin_required
 def editar_usuario(id):
     """
                API para editar dados do usuario.
@@ -256,6 +301,7 @@ def editar_usuario(id):
                 Bad Request***:
                     ```json
                """
+    db_session = local_session()
     dados = request.get_json()
     print(dados)
     try:
@@ -292,7 +338,7 @@ def editar_usuario(id):
                 usuario_editado.CPF = (dados['cpf']).strip()
                 usuario_editado.endereco = (dados['endereco'])
 
-                usuario_editado.save()
+                usuario_editado.save(db_session)
 
                 return jsonify({
                     "nome": usuario_editado.nome,
@@ -307,6 +353,8 @@ def editar_usuario(id):
 
 
 @app.route('/atualizar_livro/<id>', methods=['PUT'])
+@jwt_required()
+@admin_required
 def editar_livro(id):
     # protegido
     """
@@ -332,6 +380,7 @@ def editar_livro(id):
                 Bad Request***:
                     ```json
                """
+    db_session = local_session()
     dados = request.get_json()
     print("gggg: ",dados)
     try:
@@ -360,7 +409,7 @@ def editar_livro(id):
             livro_editado.ISBN = (dados['isbn'])
             livro_editado.resumo = (dados['resumo'])
 
-            livro_editado.save()
+            livro_editado.save(db_session)
 
             return jsonify({
                 "titulo": livro_editado.titulo,
@@ -378,64 +427,6 @@ def editar_livro(id):
             "erro": str(e)
         })
 
-
-@app.route('/livro_status', methods=['GET'])
-def livro_status():
-    """
-              status de livro.
-
-               ## Endpoint:
-                /status_livro
-               ## Respostas (JSON):
-               ```json
-               {
-                    "livros emprestados":
-                    "livros disponiveis",
-                }
-
-                ## Erros possíveis (JSON):
-                "Dados de status indisponíveis"
-                Bad Request***:
-                    ```json
-                """
-    try:
-        livro_emprestado = db_session.execute(
-            select(Livro).where(Livro.id_livro == Emprestimo.id_livro).distinct(Livro.ISBN)
-        ).scalars()
-
-        id_livro_emprestado = db_session.execute(
-            select(Emprestimo.id_livro).distinct(Emprestimo.id_livro)
-        ).scalars().all()
-
-        print("livro Emprestados", livro_emprestado)
-        print("ids_livro_emprestado", id_livro_emprestado)
-        livrostatus = db_session.execute(select(Livro)).scalars()
-
-        print("Todos os livros", livrostatus)
-
-        lista_emprestados = []
-        lista_disponiveis = []
-        for livro in livro_emprestado:
-            lista_emprestados.append(livro.serialize_livro())
-
-        print("Resultados da lista:", lista_emprestados)
-
-        for livro in livrostatus:
-            if livro.id_livro not in id_livro_emprestado:
-                lista_disponiveis.append(livro.serialize_livro())
-
-        print("Resultados disponiveis", lista_disponiveis)
-
-        return jsonify({
-            "Livros emprestados": lista_emprestados,
-            "Livros disponiveis": lista_disponiveis
-
-        })
-
-    except ValueError:
-        return jsonify({
-            "error": "Dados indisponíveis"
-        })
 
 
 if __name__ == '__main__':
